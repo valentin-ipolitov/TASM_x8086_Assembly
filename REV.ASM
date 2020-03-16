@@ -33,7 +33,7 @@ offsetBufferHex dw ?
 strHelper  db  6 dup(?)
 filename   db 'test.txt',0
 filehandle dw ?
-buffer     db 100 dup(0) 
+buffer     db 100 dup('$') 
 bufferHex db 200 dup(0)
 param  db 10 dup(0)
 paramH db '-h', '$'
@@ -150,14 +150,13 @@ mov  ds, ax
 ; READ FILE			
   mov ah,3fh		
   mov bx,filehandle
-  mov cx,32h  ; 50 deco
+  mov cx,32h  
   lea dx,buffer
   int 21h
   jc readError
  	
 ; convertion for one character
   mov bx, 16                  ; Set up the divisor (base 16)
-
   mov si, offset buffer
   mov di, offset bufferHex
 
@@ -167,17 +166,11 @@ mov  ds, ax
     mov dx, 0                   ; Clear DX
     xor ax, ax         ; set ax to 0
     mov al, [si]   ; get char from buffer
+    inc si
     cmp al, '$'        ; is end of buffer
-    jne printChar            ; if end of buferr - stop programm
+    jne div2            ; if end of buferr - stop programm
     jmp stop
  
-  printChar:
-    mov dl, al
-    mov ah, 2
-    int 21h
-    inc si
-    jmp getChar
-
   div2:
     div bx
     push dx ; pocemu pusim dx, kak ostatok po deleniu tuda popodajet ?????
@@ -198,19 +191,16 @@ mov  ds, ax
   hexRet2:
     mov [di], dl
     inc di
+    mov ah, 2;
+    int 21h
     
     LOOP getHex2
 
-    jmp skip2;
+    jmp getChar;
     
   moreHex2:
     add dl, 7h
     jmp hexRet2
-  
-  skip2:
-    inc si
-    print msg3
-    jmp getChar
 
 
 
