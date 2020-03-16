@@ -42,11 +42,6 @@ wrongParametersMessage db 'Wrong parameter.',10,13,'Available parameters:',10,13
 OpenFileErrorMessage  db 'No such file.',10, 13, '$'
 ReadFileErrorMessage  db 'Read error occurred.',10, 13, '$'
 CloseFileErrorMessage db 'Close file error occured.', 10, 13, '$'
-DebugMessage          db 'The program4ik go through breakpoint',10,13,'$'
-msg0 db 'OK0', 10, 13, '$'
-msg1 db 'OK1', 10, 13, '$'
-msg2 db 'OK2', 10, 13, '$'
-msg3 db 'OK3', 10, 13, '$'
 
 NoParamsMesage db 'No params was entered', 10, 13, '$'
 
@@ -58,59 +53,6 @@ print MACRO msg
       lea dx, msg
       int 21h
       endm
-
-;@src: https://www.quora.com/How-do-I-write-a-string-comparison-in-an-assembly-language
-cmpStr MACRO str1, str2 
-      mov bx, 00
-      mov bl, str1+1
-      mov bg, str2+2
-
-      cmp bl,bh
-      jne l1
-      
-      add si, 2
-      add di, 2
-      
-      l2: 
-        mov bl, byte ptr[si]
-        cmp byte ptr[di], bl
-        jne l1
-        inc si
-        inc di
-        cmp byte ptr[di], "$"
-        jne l2
-        
-        mov ax, 1
-
-      l1: 
-        mov ax, 0
-endm
-;@endsrc
-
-; PROCEDURES
-;@src: https://stackoverflow.com/questions/29568631/how-to-print-the-contents-of-a-register-in-emu8086
-proc number2string 
-  mov  bx, 10             ;DIGITS ARE EXTRACTED DIVIDING BY 10.
-  mov  cx, 0              ;COUNTER FOR EXTRACTED DIGITS.
-    cycle1:       
-      mov  dx, 0          ;NECESSARY TO DIVIDE BY BX.
-      div  bx             ;DX:AX / 10 = AX:QUOTIENT DX:REMAINDER.
-      push dx             ;PRESERVE DIGIT EXTRACTED FOR LATER.
-      inc  cx             ;INCREASE COUNTER FOR EVERY DIGIT EXTRACTED.
-      cmp  ax, 0          ;IF NUMBER IS
-      jne  cycle1         ;NOT ZERO, LOOP. 
-                          ;NOW RETRIEVE PUSHED DIGITS.
-      mov  si, offset strHelper
-    cycle2:  
-      pop  dx        
-      add  dl, 48         ;CONVERT DIGIT TO CHARACTER.
-      mov  [ si ], dl
-      inc  si
-      loop cycle2  
-
-      ret
-endp  
-;@endsrc
 
 
 main proc
@@ -155,7 +97,7 @@ mov  ds, ax
   int 21h
   jc readError
  	
-; convertion for one character
+; CONVERTION ASCCI TO _16
   mov bx, 16                  ; Set up the divisor (base 16)
   mov si, offset buffer
   mov di, offset bufferHex
@@ -204,7 +146,7 @@ mov  ds, ax
 
 
 
-; PRINT FILE
+; PRINT _16 OUTPUT
   print bufferHex
 
 
@@ -214,6 +156,7 @@ mov  ds, ax
   int 21h
   jc closeError
 
+  
 ; ENDS PROGRAM
   jmp stop
 
