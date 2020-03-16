@@ -1,5 +1,5 @@
 ;@see https://stackoverflow.com/questions/27105410/tasm-checking-arguments-when-cx-is-modified
-;------------------------------------------------------------------------------------------------
+;---------------------------------------------------------------------------------------------------------------------
 ; uloha_5.asm
 ; 
 ; there is description text
@@ -22,37 +22,55 @@
 ; Execute with: "uloha_5.exe"
 ;           OR
 ; Assemle + Link + Execute: "compile.bat uloha_5"
-;------------------------------------------------------------------------------------------------
+;----------------------------------------------------------------------------------------------------------------------  
 
 model small
 
+; STACK ----------------------------------------------------------------------------------------------------------------
 .stack 100h
+; ----------------------------------------------------------------------------------------------------------------------
 
-.data
-offsetBufferHex dw ?
+
+; DATA -----------------------------------------------------------------------------------------------------------------
+.data 
+newLineSign db 1 dup('N')
+charOrderCounter db 2
+offsetBufferHex  dw ?
 strHelper  db  6 dup(?)
 filename   db 'test.txt',0
 filehandle dw ?
 buffer     db 100 dup('$') 
-bufferHex db 200 dup(0)
-param  db 10 dup(0)
-paramH db '-h', '$'
-HelperMessage db 'Usage message here', 10, 13,'$'
+bufferHex  db 200 dup('$')
+param      db 10 dup(0)
+paramH     db '-h', '$'
+HelperMessage          db 'Usage message here', 10, 13,'$'
 wrongParametersMessage db 'Wrong parameter.',10,13,'Available parameters:',10,13,'-h - for showing help',10,13,'-p - as linux less comand',10,13,'-r - for reverse output',10,13,'-s - for alfabetic ordered output',10,13,'$'
-OpenFileErrorMessage  db 'No such file.',10, 13, '$'
-ReadFileErrorMessage  db 'Read error occurred.',10, 13, '$'
-CloseFileErrorMessage db 'Close file error occured.', 10, 13, '$'
+OpenFileErrorMessage   db 'No such file.',10, 13, '$'
+ReadFileErrorMessage   db 'Read error occurred.',10, 13, '$'
+CloseFileErrorMessage  db 'Close file error occured.', 10, 13, '$'
 
 NoParamsMesage db 'No params was entered', 10, 13, '$'
+; ----------------------------------------------------------------------------------------------------------------------
+
 
 .code
 
-; MACROS
-print MACRO msg
+
+; MACROS ---------------------------------------------------------------------------------------------------------------
+; Prints content of msg
+print MACRO msg        
       mov ah, 09h
       lea dx, msg
       int 21h
       endm
+
+; Prints buferr and counts positions - new lines
+printBuffer MACRO buff 
+      mov ah, 09h
+      lea dx, msg
+      int 21h
+      endm
+; ----------------------------------------------------------------------------------------------------------------------
 
 
 main proc
@@ -109,9 +127,11 @@ mov  ds, ax
     xor ax, ax         ; set ax to 0
     mov al, [si]   ; get char from buffer
     inc si
+    cmp al, 10
+    je newLineHandler
     cmp al, '$'        ; is end of buffer
     jne div2            ; if end of buferr - stop programm
-    jmp stop
+    jmp printBuff
  
   div2:
     div bx
@@ -133,8 +153,8 @@ mov  ds, ax
   hexRet2:
     mov [di], dl
     inc di
-    mov ah, 2;
-    int 21h
+    ; mov ah, 2;
+    ; int 21h
     
     LOOP getHex2
 
@@ -144,10 +164,15 @@ mov  ds, ax
     add dl, 7h
     jmp hexRet2
 
-
+  newLineHandler:
+    mov dl, newLineSign
+    mov [di], dl
+    inc di
+    jmp getChar
 
 ; PRINT _16 OUTPUT
-  print bufferHex
+  printBuff: 
+    print bufferHex
 
 
 ; CLOSING FILE
@@ -156,7 +181,7 @@ mov  ds, ax
   int 21h
   jc closeError
 
-  
+
 ; ENDS PROGRAM
   jmp stop
 
