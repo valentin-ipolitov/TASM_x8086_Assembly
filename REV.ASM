@@ -14,6 +14,7 @@
 ;
 ;
 ;
+; Processor: intel 8086
 ; Assembler: TASM
 ;
 ; Assemble with: "tasm uloha_5.asm"
@@ -29,46 +30,29 @@ model compact
 .stack 100h
 ; ----------------------------------------------------------------------------------------------------------------------
 
+; INCLUDES -------------------------------------------------------------------------------------------------------------
+INCLUDE macros.asm
+; ----------------------------------------------------------------------------------------------------------------------
 
 ; DATA -----------------------------------------------------------------------------------------------------------------
 .data 
-newLineSign db 1 dup('N')
-offsetCounter dw 0
-filename   db 'test.txt',0
-filehandle dw ?
-buffer     db 250 dup('$') 
-param      db 10 dup(0)
-paramH     db '-h', '$'
+newLineSign    db 1 dup('N')
+offsetCounter  dw 0
+filename       db 'test.txt',0
+filehandle     dw ?
+buffer         db 640 dup('$') 
+param          db 10 dup(0)
+paramH         db '-h', '$'
 HelperMessage          db 'Usage message here', 10, 13,'$'
 wrongParametersMessage db 'Wrong parameter.',10,13,'Available parameters:',10,13,'-h - for showing help',10,13,'-p - as linux less comand',10,13,'-r - for reverse output',10,13,'-s - for alfabetic ordered output',10,13,'$'
 OpenFileErrorMessage   db 'No such file.',10, 13, '$'
 ReadFileErrorMessage   db 'Read error occurred.',10, 13, '$'
 CloseFileErrorMessage  db 'Close file error occured.', 10, 13, '$'
-
-NoParamsMesage db 'No params was entered', 10, 13, '$'
+NoParamsMesage         db 'No params was entered', 10, 13, '$'
 ; ----------------------------------------------------------------------------------------------------------------------
-
 
 .code
 
-
-; MACROS ---------------------------------------------------------------------------------------------------------------
-; Prints content of msg
-print MACRO msg        
-      mov ah, 09h
-      lea dx, msg
-      int 21h
-      endm
-
-; Prints buferr and counts positions - new lines
-printBuffer MACRO buff 
-      mov ah, 09h
-      lea dx, msg
-      int 21h
-      endm
-; ----------------------------------------------------------------------------------------------------------------------
-
-; PROCEDURE ------
 ;@src: https://stackoverflow.com/questions/29568631/how-to-print-the-contents-of-a-register-in-emu8086
 proc number2string 
   mov  bx, 10             ;DIGITS ARE EXTRACTED DIVIDING BY 10.
@@ -81,7 +65,7 @@ proc number2string
       cmp  ax, 0          ;IF NUMBER IS
       jne  cycle1         ;NOT ZERO, LOOP. 
                           ;NOW RETRIEVE PUSHED DIGITS.
-      ; mov  si, offset strHelper
+    
     cycle2:  
       pop  dx        
       add  dl, 48         ;CONVERT DIGIT TO CHARACTER.
@@ -92,30 +76,35 @@ proc number2string
       ret
 endp  
 ;@endsrc
-; --------
 
 main proc
 
 
 ; INITIALIZE DS
-mov  ax, @data
-mov  ds, ax   
+
 
 
 ; GET OPTIONS
-;mov ah, 40h         ; DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
-;mov bx, 1           ; File handle = STDOUT
-;;xor cx, cx
-;;mov cl, ds:[0080h]   ; CX: number of bytes to write;
-;cmp cl, 0
-;;mov al, cl
+mov ah, 40h         ; DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
+mov bx, 1           ; File handle = STDOUT
+xor ch, ch
+mov cl, ds:[0080h]  ; CX: number of bytes to write
+cmp cx, 1
+jge processParams
+jmp normalFlow
 
-; jge processeParams   ; need to process entered params
+processParams:
+  xor dx, dx
+  mov dx, 81h         ; DS:DX -> data to write (command line)
+  int 21h             ; Call MSDOS
+        ; Call MSDOS
+  jmp stop
 
-;jnz processeParams
-;int 21h             ; Call MSDOS
-;print NoParamsMesage
-;jmp stop   
+normalFlow:         ;normal program flow
+  mov  ax, @data
+  mov  ds, ax   
+ 
+
 
 
 ; OPEN FILE
@@ -136,7 +125,7 @@ mov  ds, ax
   readFile:
     mov ah,3fh		
     mov bx,filehandle
-    mov cx, 0000FFFFh   
+    mov cx, 0000FA00h   
     lea dx,buffer
     int 21h
     jc readError
@@ -237,14 +226,7 @@ newLineHandler:
 
   
   
-  ; processing parameters
-  processeParams:
-    mov dx, 81h         ; DS:DX -> data to write (command line)
-    mov param, 81h
-    jmp stop
-    ; cmpStr dx, paramH 
-    ; jne wrongParameters
-    ; jmp showHelper
+  
   
   wrongParameters:
     print wrongParametersMessage
@@ -261,5 +243,3 @@ newLineHandler:
 
 main endp
 end main
- 
-
