@@ -1,30 +1,8 @@
-; SPROTY VYPOCET :)
-; format vypisu od 2eho riadku: 
-; 50:424242424242424242424242424242424242424242424242424 ; 50 je posunutie, ':' - oddelovac, 42h - 'B'ASCII
-; Kedze chcem aby najvatsi buffer v pamati bol 65535 - tak musim si vyratat kolko znakov chcem scitavat na raz, lebo pri transformacii v hexo - kazda pismeno bude 2 znaky
-; 65535/2 = 32767 + 1    						                     ; tu by som vedel ze mozem nacitat 32767
-; citam - 32767                						  	           ; ale potom musiel by som pridat aj posunutia znaku od riadka
-; v prerobenom mam - 65534 + 1('$')                        
-; obratno - 65535 + numbers(???) // horsi pripar ked kazdy char na osobitnom riadku. pre tento zapis potrebovali by sme 32767 riadkov a na kazdom urcite viac viac ako 1 znak(od 2 riadku ktoru ma posunutie 				 50 - 2 znaky) na uchova => preskocili by sme 65535
-; preto chcem si zvolit predpoklad, kolko budem mat znakov na jednom riadku (stredna hodnota) - bude to 50
-; 111111111111111111111111111111111111111111111111111 // 50
-; 32767/50 = 656 vapross :                                                ; znamena to ze by sme mali mat 656 riadkov
-; 2 - 2znaky // 2									; na 2om riadku 2 znaky(pre zapis 50)
-; 3az 20 (3+(950-100)%50) - 3znaky //3*18 = 54		                        ; na 3om az 20om 3 znaky(pre zapis 100,150,200,....950 arifm postupnost)
-; 21 az  202 (22+(9950-950)%50) - 4znaky // 4*201 = 804                   ; na 21 az 202 riadku 4 znaky(pre zapis 1000,1050....,9950 arifm postupnost)
-; 203 az 656 // 5 znakov // 5*453 = 2265  		                          	; na 203 az 656om riadku 5 znakov( pre zapis 10000, 10050 az ~32000 arifm postupnost)
-; summ of al character which i need to print positions                    ; celkovy pocet potrebnych znakov je 3125
-; + oddelovac na kazdy riadok // 3125+655 = 3780                          ; musime pridat aj 655 oddelovacich znakov ':' na zacitok ridku
-; 											                                                  ; 3780 znakov celkovo mame vyhradit pre zapis posunutia
-; takze by sme mali vyhradit pre jedno nacitanie 32767 - 3780 = 28987
-; ale tym padom ked sme zmensili pocet pismen re pocitanie, zmensil sa aj pocet riadkov a posunutia 
-; vediem k tomu ze niekde je ta hran medzi 28987 a 32767 znakov ktore budu presne pasovat pre max. percent vyuzitia tej pamati na nacitavanie => menej nacitanij ale uz to pocitat nebudem
-; a za predpokladu ze kazdy riadok obsahuje v strednom 50 znakov pouziem uplne dostatocne 28987 bajtov na nacitavanie kusov suboru
 ;@see https://stackoverflow.com/questions/27105410/tasm-checking-arguments-when-cx-is-modified
 ;---------------------------------------------------------------------------------------------------------------------
 ; uloha_5.asm
 ; 
-; there is description text
+; Description: "Vypísať obsah vstupu v hexadecimálnom tvare. Na začiatku každého riadku vypísať posunutie prvej vypisovanej hodnoty od začiatku."
 ;
 ; TODO - budem delat string comparation: https://www.quora.com/How-do-I-write-a-string-comparison-in-an-assembly-language
 ;      - kak budem obrabativat druhie prepinaci
@@ -37,7 +15,6 @@
 ;
 ;
 ; Assembler: TASM
-; OS: Any Win32-based OS
 ;
 ; Assemble with: "tasm uloha_5.asm"
 ; Link with: "link uloha_5.obj"
@@ -46,7 +23,7 @@
 ; Assemle + Link + Execute: "compile.bat uloha_5"
 ;----------------------------------------------------------------------------------------------------------------------  
 
-model small
+model compact
 
 ; STACK ----------------------------------------------------------------------------------------------------------------
 .stack 100h
@@ -56,10 +33,10 @@ model small
 ; DATA -----------------------------------------------------------------------------------------------------------------
 .data 
 newLineSign db 1 dup('N')
+offsetCounter dw 0
 filename   db 'test.txt',0
 filehandle dw ?
 buffer     db 250 dup('$') 
-bufferHex  db 250 dup('$')
 param      db 10 dup(0)
 paramH     db '-h', '$'
 HelperMessage          db 'Usage message here', 10, 13,'$'
@@ -108,8 +85,8 @@ proc number2string
     cycle2:  
       pop  dx        
       add  dl, 48         ;CONVERT DIGIT TO CHARACTER.
-      mov  [ si ], dl
-      inc  si
+      mov ah, 2;
+      int 21h
       loop cycle2  
 
       ret
@@ -172,22 +149,22 @@ mov  ds, ax
   
 ; CONVERTION ASCCI TO _16
   converASCCI_to_Hexo:
-    mov bx, 16                  ; Set up the divisor (base 16)
     mov si, offset buffer
-    mov di, offset bufferHex
 
   ; in AX should be a char
   getChar:
+    mov bx, 16                  ; Set up the divisor (base 16)
     mov cx, 0                   ; Initialize the counter
     mov dx, 0                   ; Clear DX
     xor ax, ax         ; set ax to 0
     mov al, [si]   ; get char from buffer
     inc si
+    inc offsetCounter
     cmp al, 10
     je newLineHandler
     cmp al, '$'        ; is end of buffer
     jne div2            ; if end of buferr - stop programm
-    jmp countLetterPossitionInBuffer
+    jmp closeFile
  
   div2:
     div bx
@@ -207,10 +184,8 @@ mov  ds, ax
     jg moreHex2
 
   hexRet2:
-    mov [di], dl
-    inc di
-    ; mov ah, 2;
-    ; int 21h
+    mov ah, 2;
+    int 21h
     
     LOOP getHex2
 
@@ -220,61 +195,34 @@ mov  ds, ax
     add dl, 7h
     jmp hexRet2
 
-  newLineHandler:
-    mov dl, newLineSign
-    mov [di], dl
-    inc di
-    jmp getChar
-
 ; PRINT _16 OUTPUT
-countLetterPossitionInBuffer: 
+newLineHandler: 
+      ; printing new line
+      mov dl, 10
+      mov ah, 2;
+      int 21h
+      mov dl, 13
+      mov ah, 2;
+      int 21h
 
-    mov si, offset buffer
-    mov di, offset bufferHex
-    mov cx, 0                   ; Initialize the counter
+      ; prining offset number
+      mov ax, offsetCounter
+      call number2string
 
-    processLetter:
-      mov dx, 0                   ; Clear DX
-      xor ax, ax         ; set ax to 0
-      mov al, [di]   ; get char from bufferHex
-      inc di
-      cmp al, 'N'
-      je newLineChanger
-      inc cx
-      cmp al, '$'        ; is end of buffer
-      jne addLetterToBuffer
-      jmp readyBuffer
-    
-      newLineChanger:
-        mov dl, 10
-        mov [si], dl
-        inc si
-        ; mov dl, 13
-        ; mov [si], dl
-        ; inc si
-        mov ax, cx
-        shr ax, 1
-        call number2string
-        mov dl, ':'
-        mov [si], dl
-        inc si
-        jmp processLetter
+      ; printing separator
+      mov dl, ':'
+      mov ah, 2;
+      int 21h
 
-      addLetterToBuffer:
-        mov dl, al
-        mov [si], dl
-        inc si
-        jmp processLetter
-
-      readyBuffer:
-        mov [si], '$'
-        print buffer
+      ; geting next char
+      jmp getChar
 
 ; CLOSING FILE
-  mov ah,3eh
-  mov bx,filehandle
-  int 21h
-  jc closeError
+  closeFile:
+    mov ah,3eh
+    mov bx,filehandle
+    int 21h
+    jc closeError
 
 
 ; ENDS PROGRAM
