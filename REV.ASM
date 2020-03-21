@@ -36,13 +36,12 @@ INCLUDE macros.asm
 
 ; DATA -----------------------------------------------------------------------------------------------------------------
 .data 
+params         db 30 dup('$')
 newLineSign    db 1 dup('N')
 offsetCounter  dw 0
-filename       db 'test.txt',0
+filename       db 10 dup('$')
 filehandle     dw ?
 buffer         db 640 dup('$') 
-param          db 10 dup(0)
-paramH         db '-h', '$'
 HelperMessage          db 'Usage message here', 10, 13,'$'
 wrongParametersMessage db 'Wrong parameter.',10,13,'Available parameters:',10,13,'-h - for showing help',10,13,'-p - as linux less comand',10,13,'-r - for reverse output',10,13,'-s - for alfabetic ordered output',10,13,'$'
 OpenFileErrorMessage   db 'No such file.',10, 13, '$'
@@ -80,10 +79,6 @@ endp
 main proc
 
 
-; INITIALIZE DS
-
-
-
 ; GET OPTIONS
 mov ah, 40h         ; DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
 mov bx, 1           ; File handle = STDOUT
@@ -96,9 +91,77 @@ jmp normalFlow
 processParams:
   xor dx, dx
   mov dx, 81h         ; DS:DX -> data to write (command line)
-  int 21h             ; Call MSDOS
-        ; Call MSDOS
-  jmp stop
+ ; int 21h             ; Call MSDOS
+
+parseParameters:
+ 
+  mov si, offset dx
+  ; rrr:mov dl, [si]
+  ; inc si
+  ; mov ah, 2;
+  ; int 21h
+  ; loop rrr
+  ; mov dl, 10
+  ; mov ah, 2
+  ; int 21h
+  ; mov dl, 13
+  ; mov ah, 2
+  ; int 21h
+  ;-----
+  ; copy all params to sting
+  
+  ; sochranit cx
+  ; zapusit v stack loop
+  ; vypusit v param 
+  mov bx, cx
+  add si, cx
+  dec si
+  pushArgs:
+    mov dl, [si]
+    dec si
+    push dx   
+    ; mozet dec cx?
+    loop pushArgs
+
+  mov  ax, @data
+  mov  ds, ax   
+  
+  ;pop
+  mov cx, bx
+  mov di, offset params
+  popArgs:
+    pop dx
+    mov [di], dx
+    inc di
+    loop popArgs
+  
+
+  mov si, offset params
+  mov di, offset filename
+  mov cx, bx
+
+  passSpace:
+    mov dl, [si]
+    inc si
+    dec cx
+    cmp dl, 20h
+    je passSpace
+  
+  getFileName:
+    mov byte ptr [di], dl
+    inc di
+    mov dl, [si]
+    inc si
+    dec cx
+    cmp cx, 0
+    jle getOpts
+    cmp dl, ' '
+    jne getFileName
+
+  getOpts:
+    print filename
+    jmp stop
+
 
 normalFlow:         ;normal program flow
   mov  ax, @data
@@ -223,11 +286,7 @@ newLineHandler:
   closeError:
     print CloseFileErrorMessage
     jmp stop
-
-  
-  
-  
-  
+    
   wrongParameters:
     print wrongParametersMessage
     jmp stop 
