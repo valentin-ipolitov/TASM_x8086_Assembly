@@ -16,14 +16,14 @@ reverseString MACRO string
             ; mov ah, 2
             ; int 21h
             inc si
-            inc cx
             cmp dx, '$'
             je popStr
+            inc cx
             push dx  
             jmp pushStr 
 
 
-      ;pop
+      ; ;pop
       mov di, offset string
       popStr:
             pop dx
@@ -32,7 +32,7 @@ reverseString MACRO string
             ; int 21h
             inc di
             loop popStr
-      mov [di], '$'
+      ; mov [di], '$'
     
 endm
 

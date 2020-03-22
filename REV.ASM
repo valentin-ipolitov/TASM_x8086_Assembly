@@ -43,8 +43,7 @@ offsetCounter  dw 0
 filename       db 10 dup('$')
 filehandle     dw ?
 buffer         db 640 dup('$') 
-HelperMessage          db 'Usage message here', 10, 13,'$'
-wrongParametersMessage db 'Wrong parameter.',10,13,'Available parameters:',10,13,'-h - for showing help',10,13,'-p - as linux less comand',10,13,'-r - for reverse output',10,13,'-s - for alfabetic ordered output',10,13,'$'
+HelperMessage          db 'Available parameters:',10,13,'-h - for showing help',10,13,'-p - as linux less comand',10,13,'-r - for reverse file data output',10,13,'-s - for alfabetic ordered output',10,13,'$'
 OpenFileErrorMessage   db 'No such file.',10, 13, '$'
 ReadFileErrorMessage   db 'Read error occurred.',10, 13, '$'
 CloseFileErrorMessage  db 'Close file error occured.', 10, 13, '$'
@@ -86,6 +85,7 @@ mov bx, 1           ; File handle = STDOUT
 xor ch, ch
 mov cl, ds:[0080h]  ; CX: number of bytes to write
 ; cx - 1???
+; dec cx
 cmp cx, 1
 jge processParams
 jmp normalFlow
@@ -191,9 +191,9 @@ print HelperMessage
 
 ; OPEN FILE
 openFile:
-  mov ax,3d02h		; open file
+  mov ax,3d00h		; open file
 			; 3d is DOS command to open file
-			; 02 is read/write mode in al
+			; 00 is read mode in al
   lea dx,filename	; specifying file name
   int 21h		; execute command
   jc openError 		; if error
@@ -218,6 +218,17 @@ openFile:
     print ReadFileErrorMessage
     jmp stop
   
+  ; CLOSING FILE
+  closeFile:
+    mov ah,3eh
+    mov bx,filehandle
+    int 21h
+    jc closeError
+
+  closeError:
+    print CloseFileErrorMessage
+    jmp stop
+      
   isReverse:  
     mov al, 2
     and al, flag
@@ -245,7 +256,7 @@ openFile:
     je newLineHandler
     cmp al, '$'        ; is end of buffer
     jne div2            ; if end of buferr - stop programm
-    jmp closeFile
+    jmp stop
  
   div2:
     div bx
@@ -298,12 +309,7 @@ newLineHandler:
       ; geting next char
       jmp getChar
 
-; CLOSING FILE
-  closeFile:
-    mov ah,3eh
-    mov bx,filehandle
-    int 21h
-    jc closeError
+
 
 
 ; ENDS PROGRAM
@@ -312,13 +318,8 @@ newLineHandler:
   ; error messages
   
     
-  closeError:
-    print CloseFileErrorMessage
-    jmp stop
-    
-  wrongParameters:
-    print wrongParametersMessage
-    jmp stop 
+ 
+ 
     
  
   
