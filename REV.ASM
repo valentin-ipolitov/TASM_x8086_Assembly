@@ -4,15 +4,6 @@
 ; 
 ; Description: "Vypísať obsah vstupu v hexadecimálnom tvare. Na začiatku každého riadku vypísať posunutie prvej vypisovanej hodnoty od začiatku."
 ;
-; TODO - budem delat string comparation: https://www.quora.com/How-do-I-write-a-string-comparison-in-an-assembly-language
-;      - kak budem obrabativat druhie prepinaci
-;        1. nastavim flag
-;           esli vo flage tak 1 perechodim na druhuju cast
-;           esli tak to perechodim
-;           inace - idem normalnym flow-om
-;
-;
-;
 ;
 ; Processor: intel 8086
 ; Assembler: TASM
@@ -47,7 +38,6 @@ HelperMessage          db 'Available parameters:',10,13,'-h - for showing help',
 OpenFileErrorMessage   db 'No such file.',10, 13, '$'
 ReadFileErrorMessage   db 'Read error occurred.',10, 13, '$'
 CloseFileErrorMessage  db 'Close file error occured.', 10, 13, '$'
-NoParamsMesage         db 'No params was entered', 10, 13, '$'
 ; ----------------------------------------------------------------------------------------------------------------------
 
 .code
@@ -76,135 +66,139 @@ proc number2string
 endp  
 ;@endsrc
 
-main proc
+proc getCLIArguments
+  mov ah, 40h         ; DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
+  mov bx, 1           ; File handle = STDOUT
+  xor ch, ch
+  mov cl, ds:[0080h]  ; CX: number of bytes to write
+  cmp cx, 1
+  jge processParams
+  jmp normalFlow
 
-
-; GET OPTIONS
-mov ah, 40h         ; DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
-mov bx, 1           ; File handle = STDOUT
-xor ch, ch
-mov cl, ds:[0080h]  ; CX: number of bytes to write
-; cx - 1???
-; dec cx
-cmp cx, 1
-jge processParams
-jmp normalFlow
-
-processParams:
-  xor dx, dx
-  mov dx, 82h         ; DS:DX -> data to write (command line)
- ; int 21h             ; Call MSDOS
-
-parseParameters:
-  mov si, offset dx
-  mov bx, cx
-  add si, cx
-  dec si
-  pushArgs:
-    mov dl, [si]
-    dec si
-    push dx   
-    loop pushArgs
-
-  mov  ax, @data
-  mov  ds, ax   
-  
-  ;pop
-  mov cx, bx
-  mov di, offset params
-  popArgs:
-    pop dx
-    mov [di], dx
-    inc di
-    loop popArgs
-  
-
-  mov si, offset params
-  mov di, offset filename
-  mov cx, bx
-
-  passSpace:
-    mov dl, [si]
-    inc si
-    dec cx
-    cmp dl, 20h
-    je passSpace
-    cmp dl, '-'
-    je showHelper
-    jmp getFileName
-
-  showHelper:
-    print HelperMessage
-    jmp stop    
-  
-  getFileName:
-    mov byte ptr [di], dl
-    inc di
-    mov dl, [si]
-    inc si
-    dec cx
-    cmp cx, 0
-    jle getOpts
-    cmp dl, ' '
-    jne getFileName
-   
-
-  getOpts:
-    mov dl, [si]
-    inc si
-    cmp dl, '-'
-    je getParam
-    dec cx
-    cmp cx, 0
-    jle normalFlow
-    jmp getOpts
-   
-  getParam:
-    mov dl, [si]
-    inc si
-    dec cx
-    cmp dl, 'h'
-    je setFlagH
-    cmp dl, 'r'
-    je setFlagR
-    jmp getOpts
+  processParams:
+    xor dx, dx
+    mov dx, 82h         ; DS:DX -> data to write (command line)
     
-  setFlagH:
-    mov ax, 1
-    or flag, al
-    jmp getOpts
+  ret
+endp
+
+proc parseCLIArguments
+  parseParameters:
+    mov si, offset dx
+    mov bx, cx
+    add si, cx
+    dec si
+    pushArgs:
+      mov dl, [si]
+      dec si
+      push dx   
+      loop pushArgs
+
+    mov  ax, @data
+    mov  ds, ax   
+    
+    ;pop
+    mov cx, bx
+    mov di, offset params
+    popArgs:
+      pop dx
+      mov [di], dx
+      inc di
+      loop popArgs
+    
+
+    mov si, offset params
+    mov di, offset filename
+    mov cx, bx
+
+    passSpace:
+      mov dl, [si]
+      inc si
+      dec cx
+      cmp dl, 20h
+      je passSpace
+      cmp dl, '-'
+      je showHelper
+      jmp getFileName
+
+    showHelper:
+      print HelperMessage
+      jmp stop    
+    
+    getFileName:
+      mov byte ptr [di], dl
+      inc di
+      mov dl, [si]
+      inc si
+      dec cx
+      cmp cx, 0
+      jle getOpts
+      cmp dl, ' '
+      jne getFileName
+    
+
+    getOpts:
+      mov dl, [si]
+      inc si
+      cmp dl, '-'
+      je getParam
+      dec cx
+      cmp cx, 0
+      jle normalFlow
+      jmp getOpts
+    
+    getParam:
+      mov dl, [si]
+      inc si
+      dec cx
+      cmp dl, 'h'
+      je setFlagH
+      cmp dl, 'r'
+      je setFlagR
+      jmp getOpts
+      
+    setFlagH:
+      mov ax, 1
+      or flag, al
+      jmp getOpts
+    
+    setFlagR:
+      mov ax, 2
+      or flag, al
+      jmp getOpts
+  ret
+endp
+
+
+proc openFile
+  normalFlow:         ;normal program flow
+    mov  ax, @data
+    mov  ds, ax   
   
-  setFlagR:
-    mov ax, 2
-    or flag, al
-    jmp getOpts
+  mov al, 1
+  and al, flag
+  cmp al, 0
+  je openFileJMP
+  print HelperMessage 
 
-normalFlow:         ;normal program flow
-  mov  ax, @data
-  mov  ds, ax   
- 
-mov al, 1
-and al, flag
-cmp al, 0
-je openFile
-print HelperMessage 
+  ; OPEN FILE
+  openFileJMP:
+    mov ax,3d00h		; open file
+        ; 3d is DOS command to open file
+        ; 00 is read mode in al
+    lea dx,filename	; specifying file name
+    int 21h		; execute command
+    jc openError 		; if error
+    mov filehandle,ax
+    jmp readFile
 
-; OPEN FILE
-openFile:
-  mov ax,3d00h		; open file
-			; 3d is DOS command to open file
-			; 00 is read mode in al
-  lea dx,filename	; specifying file name
-  int 21h		; execute command
-  jc openError 		; if error
-  mov filehandle,ax
-  jmp readFile
+    openError:
+      print OpenFileErrorMessage
+      jmp stop
+  ret
+endp
 
-  openError:
-    print OpenFileErrorMessage
-    jmp stop
-
-; READ FILE			
+proc readFile 
   readFile:
     mov ah,3fh		
     mov bx,filehandle
@@ -217,8 +211,10 @@ openFile:
   readError:
     print ReadFileErrorMessage
     jmp stop
-  
-  ; CLOSING FILE
+  ret
+endp
+
+proc closeFile 
   closeFile:
     mov ah,3eh
     mov bx,filehandle
@@ -228,18 +224,21 @@ openFile:
   closeError:
     print CloseFileErrorMessage
     jmp stop
-      
+  ret
+endp
+  
+proc mainProgram
   isReverse:  
     mov al, 2
     and al, flag
     cmp al, 0
     jne reverseStr
     jmp converASCCI_to_Hexo
-  
+
   reverseStr:
     reverseString buffer
-  
-; CONVERTION ASCCI TO _16
+
+  ; CONVERTION ASCCI TO _16
   converASCCI_to_Hexo:
     mov si, offset buffer
 
@@ -257,7 +256,7 @@ openFile:
     cmp al, '$'        ; is end of buffer
     jne div2            ; if end of buferr - stop programm
     jmp stop
- 
+
   div2:
     div bx
     push dx ; pocemu pusim dx, kak ostatok po deleniu tuda popodajet ?????
@@ -266,67 +265,65 @@ openFile:
     mov dx, 0
     cmp ax, 0
     jne div2
-    
+
   getHex2:
     mov dx, 0
     pop dx
     add dl, 30h
-    
-    cmp dl, 39h
+
+  cmp dl, 39h
     jg moreHex2
 
   hexRet2:
     mov ah, 2;
     int 21h
-    
-    LOOP getHex2
+
+    loop getHex2
 
     jmp getChar;
-    
+
   moreHex2:
     add dl, 7h
     jmp hexRet2
 
-; PRINT _16 OUTPUT
-newLineHandler: 
-      ; printing new line
-      mov dl, 10
-      mov ah, 2;
-      int 21h
-      mov dl, 13
-      mov ah, 2;
-      int 21h
+  ; PRINT _16 OUTPUT
+  newLineHandler: 
+    ; printing new line
+    mov dl, 10
+    mov ah, 2;
+    int 21h
+    mov dl, 13
+    mov ah, 2;
+    int 21h
 
-      ; prining offset number
-      mov ax, offsetCounter
-      call number2string
+    ; prining offset number
+    mov ax, offsetCounter
+    call number2string
 
-      ; printing separator
-      mov dl, ':'
-      mov ah, 2;
-      int 21h
+    ; printing separator
+    mov dl, ':'
+    mov ah, 2;
+    int 21h
 
-      ; geting next char
-      jmp getChar
+    ; geting next char
+    jmp getChar
 
+  ret
+endp  
+      
+main proc
+  call getCLIArguments
+  call parseCLIArguments
+  call openFile
+  call readFile
+  call closeFile
+  call mainProgram
 
-
-
-; ENDS PROGRAM
-  jmp stop
-
-  ; error messages
-  
-    
- 
- 
-    
- 
-  
   ; ends the program  
   stop:
     mov ax, 4c00h
     int 21h
 
 main endp
+
 end main
