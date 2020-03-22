@@ -36,6 +36,7 @@ INCLUDE macros.asm
 
 ; DATA -----------------------------------------------------------------------------------------------------------------
 .data 
+flag           db 1 dup(0)
 params         db 30 dup('$')
 newLineSign    db 1 dup('N')
 offsetCounter  dw 0
@@ -84,35 +85,18 @@ mov ah, 40h         ; DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
 mov bx, 1           ; File handle = STDOUT
 xor ch, ch
 mov cl, ds:[0080h]  ; CX: number of bytes to write
+; cx - 1???
 cmp cx, 1
 jge processParams
 jmp normalFlow
 
 processParams:
   xor dx, dx
-  mov dx, 81h         ; DS:DX -> data to write (command line)
+  mov dx, 82h         ; DS:DX -> data to write (command line)
  ; int 21h             ; Call MSDOS
 
 parseParameters:
- 
   mov si, offset dx
-  ; rrr:mov dl, [si]
-  ; inc si
-  ; mov ah, 2;
-  ; int 21h
-  ; loop rrr
-  ; mov dl, 10
-  ; mov ah, 2
-  ; int 21h
-  ; mov dl, 13
-  ; mov ah, 2
-  ; int 21h
-  ;-----
-  ; copy all params to sting
-  
-  ; sochranit cx
-  ; zapusit v stack loop
-  ; vypusit v param 
   mov bx, cx
   add si, cx
   dec si
@@ -120,7 +104,6 @@ parseParameters:
     mov dl, [si]
     dec si
     push dx   
-    ; mozet dec cx?
     loop pushArgs
 
   mov  ax, @data
@@ -146,6 +129,13 @@ parseParameters:
     dec cx
     cmp dl, 20h
     je passSpace
+    cmp dl, '-'
+    je showHelper
+    jmp getFileName
+
+  showHelper:
+    print HelperMessage
+    jmp stop    
   
   getFileName:
     mov byte ptr [di], dl
@@ -157,20 +147,50 @@ parseParameters:
     jle getOpts
     cmp dl, ' '
     jne getFileName
+   
 
   getOpts:
-    print filename
-    jmp stop
-
+    mov dl, [si]
+    inc si
+    cmp dl, '-'
+    je getParam
+    dec cx
+    cmp cx, 0
+    jle normalFlow
+    jmp getOpts
+   
+  getParam:
+    mov dl, [si]
+    inc si
+    dec cx
+    cmp dl, 'h'
+    je setFlagH
+    cmp dl, 'r'
+    je setFlagR
+    jmp getOpts
+    
+  setFlagH:
+    mov ax, 1
+    or flag, al
+    jmp getOpts
+  
+  setFlagR:
+    mov ax, 2
+    or flag, al
+    jmp getOpts
 
 normalFlow:         ;normal program flow
   mov  ax, @data
   mov  ds, ax   
  
-
-
+mov al, 1
+and al, flag
+cmp al, 0
+je openFile
+print HelperMessage 
 
 ; OPEN FILE
+openFile:
   mov ax,3d02h		; open file
 			; 3d is DOS command to open file
 			; 02 is read/write mode in al
@@ -193,11 +213,23 @@ normalFlow:         ;normal program flow
     int 21h
     jc readError
     print buffer
-    jmp converASCCI_to_Hexo 
+    jmp isReverse 
 
   readError:
     print ReadFileErrorMessage
     jmp stop
+  
+  isReverse:  
+    mov al, 2
+    and al, flag
+    cmp al, 0
+    jne reverseStr
+    jmp converASCCI_to_Hexo
+  
+  reverseStr:
+    reverseString buffer
+    print NoParamsMesage
+    print buffer
   
 ; CONVERTION ASCCI TO _16
   converASCCI_to_Hexo:
@@ -291,9 +323,7 @@ newLineHandler:
     print wrongParametersMessage
     jmp stop 
     
-  showHelper:
-    print HelperMessage
-    jmp stop  
+ 
   
   ; ends the program  
   stop:

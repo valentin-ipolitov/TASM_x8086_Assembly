@@ -8,25 +8,33 @@ print MACRO msg
       int 21h
       endm
 
-reverseString MACRO params        
+reverseString MACRO string        
       mov cx, 0
-      mov si offset params
-      pushArgs2:
+      mov si, offset string
+      pushStr:
             mov dl, [si]
+            ; mov ah, 2
+            ; int 21h
             inc si
             inc cx
-            push dx   
             cmp dx, '$'
-            jne pushArgs2
+            je popStr
+            push dx  
+            jmp pushStr 
 
 
       ;pop
-      mov di, offset params
-      popArgs2:
+      mov di, offset string
+      popStr:
             pop dx
             mov [di], dx
+            ; mov ah, 2
+            ; int 21h
             inc di
-            loop popArgs2
+            loop popStr
+      mov [di], '$'
+    
+      print string
 endm
 
       
