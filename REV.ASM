@@ -1,5 +1,5 @@
 ;---------------------------------------------------------------------------------------------------------------------
-; uloha_5.asm + additional tasks numbers: 
+; uloha_5.asm + additional tasks: reverse output 
 ; 
 ; Description: 
 ;   "Vypísať obsah vstupu v hexadecimálnom tvare. Na začiatku každého riadku vypísať posunutie prvej vypisovanej hodnoty od začiatku."
@@ -35,7 +35,7 @@ offsetCounter  dw 0
 filename       db 10 dup('$')
 filehandle     dw ?
 buffer         db 640 dup('$') 
-HelperMessage          db 'Available parameters:',10,13,'-h - for showing help',10,13,'-p - as linux less comand',10,13,'-r - for reverse file data output',10,13,'-s - for alfabetic ordered output',10,13,'$'
+HelperMessage          db 'Program prints hexadecimal convertation of text in file, you provideng as argument',10,13,'Also print offset of letter relative to start of file.',10,13,'Input example:',10,13,'hello',10,13,'world',10,13,'Output example:',10,13,'68656C6C6F',10,13,'6:776F726C64',10,13,'Available parameters:',10,13,'-h - for showing help',10,13,'-r - for reverse file data output',10,13,'$'
 OpenFileErrorMessage   db 'No such file.',10, 13, '$'
 ReadFileErrorMessage   db 'Read error occurred.',10, 13, '$'
 CloseFileErrorMessage  db 'Close file error occured.', 10, 13, '$'
@@ -49,6 +49,7 @@ CloseFileErrorMessage  db 'Close file error occured.', 10, 13, '$'
 ; All procedures called from here
 main proc
   call getCLIArguments
+  call saveParamsToDataSegment
   call parseCLIArguments
   call openFile
   call readFile
@@ -121,9 +122,11 @@ proc getCLIArguments
   ret
 endp
 
-; PROC parseCLIArguments
+
+  
+; PROC saveParamsToDataSegment
 ; Explanaition:
-;   parsing parameters, thats had been stored into DX
+;   saving paraneter in param string
 ; HowItWorks:
 ;   1. First of all, we shoul get filename from parameters and save it
 ;      problem is, that we cant save filename before we initialize DATA segment, but
@@ -132,35 +135,41 @@ endp
 ;      after DATA segment initialization - STACK. 
 ;      First we storirng our parameters to STACK, but PUSHing bytes from the end of params, because we dont want
 ;      our params to be reverse after POP it back.
-;   2. Getting filename into 'filename' string
-;   3. Getting options, as '-h', '-r'
-;   4. Set my own flag - 'flag'
-proc parseCLIArguments
- 
+proc saveParamsToDataSegment
   parseParameters:
     mov si, offset dx           ; get pointer to parameters into SI
     mov bx, cx                  ; temperary save number of bytes of parameters string to BX
     add si, cx                  ; move pointer SI to the end of parameters string
     dec si                      ; remove '$'
-    pushArgs:
-      mov dl, [si]              ; mov into DL current byte
-      dec si                    ; move pointer one char back
-      push dx                   ; push char current byte into stack
-      loop pushArgs             ; looping till cx is greater than 0 (loop instruction automaticli decrements CX register)
+  pushArgs:
+    mov dl, [si]              ; mov into DL current byte
+    dec si                    ; move pointer one char back
+    push dx                   ; push char current byte into stack
+    loop pushArgs             ; looping till cx is greater than 0 (loop instruction automaticli decrements CX register)
 
-    mov  ax, @data              ; initializing DATA segment
-    mov  ds, ax   
-    
-    
-    mov cx, bx                  ; het num of parameters byte back to CX
-    mov di, offset params       ; DI = pointer to parameters str
-    popArgs:                    ; start of pop from stack
-      pop dx                    ; pop byte from stack into DX
-      mov [di], dx              ; store byte in parameters string
-      inc di                    ; move pointer on parameters
-      loop popArgs              ; looping until we do not get all bytes into params 
-    
+  mov  ax, @data              ; initializing DATA segment
+  mov  ds, ax   
 
+
+  mov cx, bx                  ; het num of parameters byte back to CX
+  mov di, offset params       ; DI = pointer to parameters str
+  popArgs:                    ; start of pop from stack
+    pop dx                    ; pop byte from stack into DX
+    mov [di], dx              ; store byte in parameters string
+    inc di                    ; move pointer on parameters
+    loop popArgs              ; looping until we do not get all bytes into params 
+  ret
+endp
+
+
+; PROC parseCLIArguments
+; Explanaition:
+;   parsing parameters, thats had been stored into DX
+; HowItWorks:
+;   1. Getting filename into 'filename' string
+;   2. Getting options, as '-h', '-r'
+;   3. Set my own flag - 'flag'
+proc parseCLIArguments   
     mov si, offset params       ; si = pointer to params
     mov di, offset filename     ; di = pointer to filename
     mov cx, bx                  ; CX = number of params bytes
@@ -302,6 +311,7 @@ proc mainProgram
 
   reverseStr:
     reverseString buffer        ; call macro to reverse string
+    ; print buffer
 
   ; CONVERTION ASCCI TO _16
   converASCCI_to_Hexo:
