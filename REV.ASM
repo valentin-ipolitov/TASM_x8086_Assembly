@@ -275,13 +275,16 @@ proc readFile
   ret
 endp
 
+; PROC readFile
+; Explanaition:
+;   close file
 proc closeFile 
-  closeFile:
-    mov ah,3eh
-    mov bx,filehandle
-    int 21h
-    jc closeError
-    ret
+  closeFile:                    
+    mov ah,3eh                  ; DOS read from file instruction
+    mov bx,filehandle           ; mov filehandler to bx
+    int 21h                     ; execute command
+    jc closeError               ; if errors occured => print error message
+    ret                         ; else return
     
   closeError:
     print CloseFileErrorMessage
@@ -291,85 +294,83 @@ proc closeFile
 endp
   
 proc mainProgram
-  isReverse:                       ; check is reverse flag set
+  isReverse:                    ; check is reverse flag set
     mov al, 2
     and al, flag
-    cmp al, 0
-    jne reverseStr
-    jmp converASCCI_to_Hexo
+    cmp al, 0                   ; if r flag set
+    jne reverseStr              ; then jump to reverseStr 
+    jmp converASCCI_to_Hexo     ; otherwise - jump to hexa convertation 
 
   reverseStr:
-    reverseString buffer
+    reverseString buffer        ; call macro to reverse string
 
   ; CONVERTION ASCCI TO _16
   converASCCI_to_Hexo:
-    mov si, offset buffer
+    mov si, offset buffer       ; move into SI pointer to buffer
 
   ; in AX should be a char
   getChar:
     mov bx, 16                  ; Set up the divisor (base 16)
     mov cx, 0                   ; Initialize the counter
     mov dx, 0                   ; Clear DX
-    xor ax, ax         ; set ax to 0
-    mov al, [si]   ; get char from buffer
-    inc si
-    inc offsetCounter
-    cmp al, 10
-    je newLineHandler
-    cmp al, '$'        ; is end of buffer
-    jne div2            ; if end of buferr - stop programm
+    xor ax, ax                  ; set ax to 0
+    mov al, [si]                ; get char from buffer
+    inc si                      ; move buffer pointer one byte further
+    inc offsetCounter           ; increment offset counter
+    cmp al, 10                  ; is buffer byte - '\n'(new line)
+    je newLineHandler           ; if true => kump to handle it
+    cmp al, '$'                 ; is buffer byte - end
+    jne div2                    ; if no, then continue convertion
     jmp stop
 
   div2:
-    div bx
-    push dx ; pocemu pusim dx, kak ostatok po deleniu tuda popodajet ?????
-
-    inc cx
-    mov dx, 0
-    cmp ax, 0
-    jne div2
+    div bx                      ; divide ax by 16
+    push dx                     ; push to stack remainder
+    inc cx                      ; increment CX
+    mov dx, 0                   ; clear dx
+    cmp ax, 0                   ; is AX(our byte) - 0
+    jne div2                    ; if no => then we can devide it a least one more time
 
   getHex2:
-    mov dx, 0
-    pop dx
-    add dl, 30h
+    mov dx, 0                   ; clear DX
+    pop dx                      ; get digit frome DX
+    add dl, 30h                 ; add 30h, ASCII representation of '0'
 
-  cmp dl, 39h
-    jg moreHex2
+  cmp dl, 39h                   ; check is our digit more then '9'
+    jg moreHex2                 ; jump to conver digit into letter(a,b,c,d,e,f)
 
-  hexRet2:
-    mov ah, 2;
-    int 21h
+  hexRet2:      
+    mov ah, 2;                  ; print the digit
+    int 21h                     
 
-    loop getHex2
+    loop getHex2                ; looping to get all stored words from STACK
 
-    jmp getChar;
+    jmp getChar;                ; get next byte from buffer
 
   moreHex2:
-    add dl, 7h
-    jmp hexRet2
+    add dl, 7h                  ; add 7h - converting to latters(a,b,c,d,e,f)
+    jmp hexRet2                 ; jump to print digit
 
-  ; PRINT _16 OUTPUT
   newLineHandler: 
     ; printing new line
-    mov dl, 10
-    mov ah, 2;
-    int 21h
-    mov dl, 13
-    mov ah, 2;
-    int 21h
+    mov dl, 10                  ; print new line - DL = 10(new line)
+    mov ah, 2;                  ; set DOS command to print char
+    int 21h                     ; execute command
+    mov dl, 13                  ; DL =  carriage return sign 
+    mov ah, 2;                  ; set DOS command to print char
+    int 21h                     ; execute command
 
     ; prining offset number
-    mov ax, offsetCounter
-    call number2string
+    mov ax, offsetCounter       ; mov AX = offset counter
+    call number2string          ; printing number in AX as string on the screen
 
     ; printing separator
-    mov dl, ':'
-    mov ah, 2;
-    int 21h
+    mov dl, ':'                 ; DL = ':' (offset separator)
+    mov ah, 2;                  ; set DOS command to print char
+    int 21h                     ; execute command
 
     ; geting next char
-    jmp getChar
+    jmp getChar                 ; get next byte from buffer
 
   ret
 endp  
