@@ -99,7 +99,7 @@ proc number2string
       ret
 endp  
 
-; PROC number2string
+; PROC getCLIArguments
 ; Explanaition:
 ;   getting command line arguments into DX register
 ; HowItWorks:
@@ -119,7 +119,7 @@ proc getCLIArguments
   ret
 endp
 
-; PROC number2string
+; PROC parseCLIArguments
 ; Explanaition:
 ;   parsing parameters, thats had been stored into DX
 ; HowItWorks:
@@ -275,7 +275,7 @@ proc readFile
   ret
 endp
 
-; PROC readFile
+; PROC closeFile
 ; Explanaition:
 ;   close file
 proc closeFile 
@@ -374,6 +374,4 @@ proc mainProgram
 
   ret
 endp  
-; ----------------------------------------------------------------------------------------------------------------------
-
 end main
