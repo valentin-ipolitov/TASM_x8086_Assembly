@@ -34,7 +34,6 @@ reverseString MACRO string
             loop popStr
       mov [di], '$'
     
-      print string
 endm
 
       

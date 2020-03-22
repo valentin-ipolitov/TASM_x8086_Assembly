@@ -212,7 +212,6 @@ openFile:
     lea dx,buffer
     int 21h
     jc readError
-    print buffer
     jmp isReverse 
 
   readError:
@@ -228,8 +227,6 @@ openFile:
   
   reverseStr:
     reverseString buffer
-    print NoParamsMesage
-    print buffer
   
 ; CONVERTION ASCCI TO _16
   converASCCI_to_Hexo:
