@@ -30,7 +30,6 @@ INCLUDE macros.asm
 .data 
 flag           db 1 dup(0)         ; flag byte representation |x|x|x|x|x|x|r|h|
 params         db 30 dup('$')
-newLineSign    db 1 dup('N')
 offsetCounter  dw 0
 filename       db 10 dup('$')
 filehandle     dw ?
@@ -374,9 +373,14 @@ proc mainProgram
     call number2string          ; printing number in AX as string on the screen
 
     ; printing separator
+    mov bl, 9
+    mov cx, 1
+    mov ah, 9
+    int 10h
     mov dl, ':'                 ; DL = ':' (offset separator)
     mov ah, 2;                  ; set DOS command to print char
     int 21h                     ; execute command
+   
 
     ; geting next char
     jmp getChar                 ; get next byte from buffer

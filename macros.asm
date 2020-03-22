@@ -33,7 +33,7 @@ reverseString MACRO string
             inc di
             loop popStr
       ; mov [di], '$'
-    print string
+;     print string
 endm
 
       
