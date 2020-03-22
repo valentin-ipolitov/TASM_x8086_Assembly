@@ -110,6 +110,8 @@ proc getCLIArguments
   mov cl, ds:[0080h]    ; CX = number of bytes to write
   cmp cx, 1             ; if there is parameters
   jge getParams         ; then get them
+  mov ax, 4c00h
+  int 21h
   ret;jmp normalFlow        ; otherwise - skip this part and go to normalFlow(without parameters manipulations)
 
   getParams:
@@ -134,10 +136,7 @@ endp
 ;   3. Getting options, as '-h', '-r'
 ;   4. Set my own flag - 'flag'
 proc parseCLIArguments
-  cmp cx, 1             ; if there is parameters
-  jge parseParameters         ; then get them
-  ret
-
+ 
   parseParameters:
     mov si, offset dx           ; get pointer to parameters into SI
     mov bx, cx                  ; temperary save number of bytes of parameters string to BX
